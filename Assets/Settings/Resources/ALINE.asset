@@ -14,10 +14,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   version: 0
   settings:
-    lineOpacity: 1
-    solidOpacity: 0.55
+    lineOpacity: 0.548
+    solidOpacity: 0.452
     textOpacity: 1
-    lineOpacityBehindObjects: 0.12
+    lineOpacityBehindObjects: 0.187
     solidOpacityBehindObjects: 0.45
     textOpacityBehindObjects: 0.9
     curveResolution: 1

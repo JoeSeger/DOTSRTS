@@ -6,7 +6,13 @@ namespace DOTSRTS.Utilities.ScriptableObjects
     {
         private static volatile T _instance;
 
-        public static T Instance => ScriptableObjectTools.ScriptableObjectInstance(_instance, Lock);
-
+        public static T Instance
+        {
+            get
+            {
+                var serializedScriptableObject = _instance;
+                return ScriptableObjectTools.ScriptableObjectInstance(ref serializedScriptableObject, Lock);
+            }
+        }
     }
 }

@@ -7,6 +7,8 @@ namespace DOTSRTS.Utilities.DOTSGrid.Components._2D
     public struct Generate2DGridRequest : IComponentData
     { // Grid bounds that define the min, max, and center
         public float4 DebugColor;        // Debug color to visualize the grid in the editor
+        public int ID;
+        public int Layer;
         public int Rows;                 // Number of rows in the grid
         public int Columns;              // Number of columns in the grid
         public float CellSize;           // Size of each grid cell

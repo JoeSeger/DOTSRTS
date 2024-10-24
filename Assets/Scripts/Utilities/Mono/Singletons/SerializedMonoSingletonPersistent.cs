@@ -29,7 +29,11 @@ namespace DOTSRTS.Utilities.Mono.Singletons
             if (_instance == null)
             {
                 _instance = this as T;
-                DontDestroyOnLoad(this);
+                if (Application.isPlaying)
+                {
+                    DontDestroyOnLoad(this);
+                }
+               
             }
             else
             {

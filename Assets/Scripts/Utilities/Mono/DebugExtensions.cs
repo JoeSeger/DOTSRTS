@@ -8,7 +8,41 @@ namespace DOTSRTS.Utilities.Mono
     public static class DebugExtensions
     {
         
-        
+         public static void DrawBounds(BoundsFloat3 bounds, Color color)
+        {
+            float3 min = bounds.Min;
+            float3 max = bounds.Max;
+
+            // Calculate the 8 corners of the bounds box
+            var corners = new float3[8];
+            corners[0] = new float3(min.x, min.y, min.z); // Bottom-left-front
+            corners[1] = new float3(max.x, min.y, min.z); // Bottom-right-front
+            corners[2] = new float3(max.x, min.y, max.z); // Bottom-right-back
+            corners[3] = new float3(min.x, min.y, max.z); // Bottom-left-back
+            corners[4] = new float3(min.x, max.y, min.z); // Top-left-front
+            corners[5] = new float3(max.x, max.y, min.z); // Top-right-front
+            corners[6] = new float3(max.x, max.y, max.z); // Top-right-back
+            corners[7] = new float3(min.x, max.y, max.z); // Top-left-back
+
+            // Draw bottom face
+            Debug.DrawLine(corners[0], corners[1], color);
+            Debug.DrawLine(corners[1], corners[2], color);
+            Debug.DrawLine(corners[2], corners[3], color);
+            Debug.DrawLine(corners[3], corners[0], color);
+
+            // Draw top face
+            Debug.DrawLine(corners[4], corners[5], color);
+            Debug.DrawLine(corners[5], corners[6], color);
+            Debug.DrawLine(corners[6], corners[7], color);
+            Debug.DrawLine(corners[7], corners[4], color);
+
+            // Draw vertical lines connecting top and bottom faces
+            Debug.DrawLine(corners[0], corners[4], color);
+            Debug.DrawLine(corners[1], corners[5], color);
+            Debug.DrawLine(corners[2], corners[6], color);
+            Debug.DrawLine(corners[3], corners[7], color);
+        }
+    
       
         /// <summary>
         /// Draws a wireframe plane using Debug.DrawLine.
@@ -53,39 +87,7 @@ namespace DOTSRTS.Utilities.Mono
                 Debug.DrawLine(point1YZ, point2YZ, color);
             }
         }
-        public static void DrawPlane(Plane plane, float size, Color color, float duration = 0f)
-        {
-            // Get the plane's normal and calculate the tangent and bitangent
-            Vector3 planeNormal = plane.normal;
-            Vector3 tangent = Vector3.Cross(planeNormal, Vector3.up);
-
-            // If the tangent is zero, recalculate it based on Vector3.right to avoid degenerate vector
-            if (tangent == Vector3.zero)
-                tangent = Vector3.Cross(planeNormal, Vector3.right);
-
-            Vector3 bitangent = Vector3.Cross(planeNormal, tangent);
-
-            // Define the four corners of the plane in local space
-            Vector3 corner1 = (-tangent - bitangent) * size * 0.5f;
-            Vector3 corner2 = (-tangent + bitangent) * size * 0.5f;
-            Vector3 corner3 = (tangent + bitangent) * size * 0.5f;
-            Vector3 corner4 = (tangent - bitangent) * size * 0.5f;
-
-            // Get the plane's center (projected onto the plane)
-            Vector3 center = plane.ClosestPointOnPlane(Vector3.zero);
-
-            // Draw the lines representing the plane
-            Debug.DrawLine(center + corner1, center + corner2, color, duration);
-            Debug.DrawLine(center + corner2, center + corner3, color, duration);
-            Debug.DrawLine(center + corner3, center + corner4, color, duration);
-            Debug.DrawLine(center + corner4, center + corner1, color, duration);
-
-            // Optionally, draw the plane's normal as an arrow
-            Debug.DrawRay(center, planeNormal * size * 0.5f, Color.red, duration);
-        }
-        /// <summary>
-        /// Draws a wireframe box using Debug.DrawLine.
-        /// </summary>
+       
         public static void DrawWireBox(float3 center, float3 size, Color color)
         {
             var halfSize = size / 2f;

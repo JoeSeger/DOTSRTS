@@ -1,35 +1,9 @@
-using Sirenix.OdinInspector;
+using UnityEngine;
 
 namespace DOTSRTS.Utilities.Mono.Singletons
 {
-    public abstract class MonoSingleton<T> : SerializedMonoBehaviour where T : MonoSingleton<T>
+    public abstract class MonoSingleton<T> : MonoBehaviour,  IMonoSingleton<T> where T : Component
     {
-        public static T Instance
-        {
-            get
-            {
-                if (_instance == null)
-                {
-                    _instance = FindFirstObjectByType<T>();
-                }
-
-                return _instance;
-            }
-        }
-
-        public virtual void Awake()
-        {
-            if (_instance == null)
-            {
-                _instance = this as T;
-            }
-            else
-            {
-                Destroy(gameObject);
-            }
-        }
-
-
-        private static T _instance;
+        public static T Instance => IMonoSingleton<T>.Instance;
     }
 }

@@ -2,14 +2,11 @@
 using System.Threading;
 using UnityEditor;
 using UnityEngine;
-#if UNITY_EDITOR
-#endif
 
 namespace DOTSRTS.Utilities.ScriptableObjects
 {
     public static class ScriptableObjectTools
     {
-
         /// <summary>
         /// Creates a ScriptableObject of the specified type in the given folder path.
         /// Works in both Editor and Runtime.
@@ -26,10 +23,10 @@ namespace DOTSRTS.Utilities.ScriptableObjects
         /// Returns a thread-safe singleton instance of the ScriptableObject.
         /// </summary>
         /// <typeparam name="T">The type of ScriptableObject.</typeparam>
-        /// <param name="instance"></param>
+        /// <param name="instance">Reference to the singleton instance.</param>
         /// <param name="lockObject">The object to lock for thread safety.</param>
         /// <returns>The singleton instance.</returns>
-        public static T ScriptableObjectInstance<T>(T instance,object lockObject) where T : ScriptableObject
+        public static T ScriptableObjectInstance<T>(ref T instance, object lockObject) where T : ScriptableObject
         {
             if (instance != null)
             {
@@ -38,29 +35,37 @@ namespace DOTSRTS.Utilities.ScriptableObjects
 
             lock (lockObject)
             {
-                if (instance != null) return instance;
-                instance = LoadInstance<T>();
-                Thread.MemoryBarrier();
+                if (instance == null)
+                {
+                    instance = LoadInstance<T>();
+                    Thread.MemoryBarrier(); // Ensures changes are visible to all threads
+                }
             }
 
             return instance;
         }
 
+        /// <summary>
+        /// Loads an existing instance of a ScriptableObject from the Resources folder.
+        /// If no instance is found, a new one is created.
+        /// </summary>
+        /// <typeparam name="T">The type of ScriptableObject.</typeparam>
+        /// <returns>The loaded or newly created ScriptableObject instance.</returns>
         public static T LoadInstance<T>() where T : ScriptableObject
         {
             var assets = Resources.LoadAll<T>("");
+
             if (assets.Length > 0)
             {
                 if (assets.Length > 1)
                 {
-                    Debug.LogWarning(
-                        $"SingletonScriptableObject: Multiple instances of {typeof(T)} found in Resources. Using the first one found.");
+                    Debug.LogWarning($"Multiple instances of {typeof(T)} found in Resources. Using the first one.");
                 }
                 return assets[0];
             }
 
-            Debug.LogWarning($"SingletonScriptableObject: No instance of {typeof(T)} found in Resources. Creating a new instance.");
-            return CreateScriptableObject<T>();
+            Debug.LogWarning($"No instance of {typeof(T)} found in Resources. Creating a new instance.");
+            return CreateScriptableObject<T>("Assets/Resources/ScriptableObjects");
         }
 
         /// <summary>
@@ -75,31 +80,29 @@ namespace DOTSRTS.Utilities.ScriptableObjects
             var asset = ScriptableObject.CreateInstance(assetType);
 
 #if UNITY_EDITOR
-            // Ensure the folder path starts with "Assets/"
+            if (string.IsNullOrEmpty(folderPath))
+            {
+                folderPath = "Assets/Resources/ScriptableObjects";
+            }
+
             if (!folderPath.StartsWith("Assets/"))
             {
                 folderPath = "Assets/" + folderPath;
             }
 
-            // Ensure the folder path contains "Resources/ScriptableObjects"
             if (!folderPath.Contains("Resources/ScriptableObjects"))
             {
                 folderPath = Path.Combine(folderPath, "Resources/ScriptableObjects");
             }
 
-            // Create the folder if it doesn't exist
             CreateFolderIfNotExists(folderPath);
 
-            // Generate a unique path for the asset
             var assetPath = AssetDatabase.GenerateUniqueAssetPath($"{folderPath}/{assetType.Name}.asset");
-
-            // Create the asset in the specified folder
             AssetDatabase.CreateAsset(asset, assetPath);
             AssetDatabase.SaveAssets();
 
             Debug.Log($"ScriptableObject of type {assetType} created at {assetPath}");
 #endif
-
             return asset;
         }
 

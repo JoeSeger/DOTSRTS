@@ -1,56 +1,59 @@
 ﻿using DOTSRTS.Utilities.DOTSGrid.Components._2D;
 using DOTSRTS.Utilities.DOTSGrid.Data;
-using DOTSRTS.Utilities.Mono;
+using DOTSRTS.Utilities.DOTSGrid.Systems._2D;
+using Sirenix.OdinInspector;
 using Unity.Entities;
-using Unity.Mathematics;
 using UnityEngine;
 
 namespace DOTSRTS.Utilities.DOTSGrid.Authoring._2D
 {
     public class Grid2dAuthoring : MonoBehaviour
     {
-        [SerializeField] private int rows = 10;
-        [SerializeField] private int columns = 10;
-        [SerializeField] private float cellSize = 1f;
-        [SerializeField] private Color debugColor = Color.green;
-        [SerializeField] private Axis rotationAxis = Axis.Y;
+        public int ID => id;
+        public GridData GridData => gridData;
 
-        // Optionally show gizmos for debugging
-        private void OnDrawGizmos()
-        {
-            float3 extents = CalculateExtents(rows, columns, cellSize);
-            float3 center = transform.position;
 
-            Gizmos.color = debugColor;
-            Gizmos.DrawWireCube(center, extents * 2f); // Drawing the bounds
-        }
+        [SerializeField] private int id;
+        [SerializeField] private GridData gridData;
 
-        // Function to calculate extents based on rows, columns, and cell size
-        private float3 CalculateExtents(int calRows, int calColumns, float calCellSize)
-        {
-            float halfWidth = (calColumns * calCellSize) / 2f;
-            float halfHeight = (calRows * calCellSize) / 2f;
-            return new float3(halfWidth, 0, halfHeight);
-        }
+        [ShowInInspector] public int InstanceID => gameObject.GetInstanceID();
 
         // Baker class for converting MonoBehaviour to ECS data
         public class Grid2dBaker : Baker<Grid2dAuthoring>
         {
             public override void Bake(Grid2dAuthoring authoring)
             {
-                var entity = GetEntity(TransformUsageFlags.Dynamic);
-                AddComponent<Grid2d>(entity);
-                AddComponent<GridComponent>(entity);
+                var gridData = authoring.gridData;
+                if (gridData == null) return;
 
-                // Generate the request for grid creation
-                AddComponent(entity, new Generate2DGridRequest
+                var serializableGrid = gridData.SerializableGrids[authoring.id];
+                if (serializableGrid == null) return;
+
+                var entity = GetEntity(TransformUsageFlags.Dynamic);
+
+                AddComponent<Grid2d>(entity);
+                DependsOn(gridData);
+#if UNITY_EDITOR
+
+                // Add the SerializableGridData component
+                AddComponentObject(entity, new SerializableGridData
                 {
-                    Rows = authoring.rows,
-                    Columns = authoring.columns,
-                    CellSize = authoring.cellSize,
-                    DebugColor = authoring.debugColor.ToFloat4(),
-                    RotationAxis = authoring.rotationAxis
+                    Value = serializableGrid,
                 });
+#endif
+
+
+                var transform = GetComponent<Transform>(authoring);
+                if (transform == null) return;
+
+                DependsOn(transform);
+
+                AddComponent(entity, new GridComponent
+                {
+                    ID = authoring.id,
+                    InstanceID = authoring.InstanceID
+                });
+                DependsOn(gridData);
             }
         }
     }

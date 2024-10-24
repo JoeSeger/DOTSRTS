@@ -5,77 +5,94 @@ using Sirenix.Serialization;
 
 namespace DOTSRTS.Events
 {
-
     public interface IEventAggregator
     {
-        public void Subscribe<T>(params Action<T>[] listeners) where T : struct;
-
-        public void Unsubscribe<T>(params Action<T>[] listeners) where T : struct;
-
-        public void Clear();
-
-        public void Publish<T>(T eventData) where T : struct;
-
+        void Subscribe<T>(params Action<T>[] listeners);
+        void Unsubscribe<T>(params Action<T>[] listeners);
+        void Clear();
+        void Publish<T>(T eventData);
     }
-    public interface IEventAggregatorHandel 
+
+    public interface IEventAggregatorHandle
     {
-        public EventAggregator EventAggregator { get; }
+        EventAggregator EventAggregator { get; }
 
-        public void Subscribe<T>(params Action<T>[] listeners) where T : struct =>  EventAggregator.Subscribe(listeners);
-
-        public void Unsubscribe<T>(params Action<T>[] listeners) where T : struct =>
-            EventAggregator.Subscribe(listeners);
-
-        public void Clear() => EventAggregator.Clear();
-
-        public void Publish<T>(T eventData) where T : struct => EventAggregator.Publish<T>(eventData);
-
+        void Subscribe<T>(params Action<T>[] listeners) => EventAggregator.Subscribe(listeners);
+        void Unsubscribe<T>(params Action<T>[] listeners) => EventAggregator.Unsubscribe(listeners);
+        void Clear() => EventAggregator.Clear();
+        void Publish<T>(T eventData) => EventAggregator.Publish(eventData);
     }
+
     public abstract class EventAggregator : SerializedScriptableObject
     {
-        [ShowInInspector, OdinSerialize]
-        private Dictionary<Type, List<Delegate>> _eventListeners = new();
-
-        public void Subscribe<T>(params Action<T>[] listeners) where T : struct
+        [ShowInInspector, OdinSerialize] private readonly Dictionary<Type, List<Delegate>> _eventListeners = new();
+        protected static readonly object Lock = new();
+       
+        public void Subscribe<T>(params Action<T>[] listeners)
         {
-            foreach (var listener in listeners)
+            if (listeners == null || listeners.Length == 0) return;
+
+            lock (Lock)
             {
-                if (_eventListeners.TryGetValue(typeof(T), out var listenerActions))
+                if (!_eventListeners.TryGetValue(typeof(T), out var listenerActions))
+                {
+                    listenerActions = new List<Delegate>();
+                    _eventListeners[typeof(T)] = listenerActions;
+                }
+
+                foreach (var listener in listeners)
                 {
                     if (!listenerActions.Contains(listener))
                     {
                         listenerActions.Add(listener);
                     }
                 }
-                else
+            }
+        }
+
+        public void Unsubscribe<T>(params Action<T>[] listeners)
+        {
+            if (listeners == null || listeners.Length == 0) return;
+
+            lock (Lock)
+            {
+                if (!_eventListeners.TryGetValue(typeof(T), out var listenerActions)) return;
+                foreach (var listener in listeners)
                 {
-                    _eventListeners[typeof(T)] = new List<Delegate> { listener };
+                    listenerActions.Remove(listener);
+                }
+
+                if (listenerActions.Count == 0)
+                {
+                    _eventListeners.Remove(typeof(T));
                 }
             }
         }
 
-        public void Clear()
+        private void UnsubscribeAll()
         {
-            _eventListeners = new Dictionary<Type, List<Delegate>>();
-        }
-        public void Unsubscribe<T>(params Action<T>[] listeners) where T : struct
-        {
-            foreach (var listener in listeners)
+            lock (Lock)
             {
-                if (_eventListeners.TryGetValue(typeof(T), out var listenersActions))
-                {
-                    listenersActions.Remove(listener);
-                }
+                _eventListeners.Clear(); // Clears all event types and listeners
             }
         }
 
-        public void Publish<T>(T eventData) where T : struct
+        public void Clear() => UnsubscribeAll(); // Reuse UnsubscribeAll for clearing
+
+        public void Publish<T>(T eventData)
         {
-            if (!_eventListeners.TryGetValue(typeof(T), out var listeners)) return;
-            foreach (var listener in listeners)
+            lock (Lock)
             {
-                ((Action<T>)listener)?.Invoke(eventData);
+                if (!_eventListeners.TryGetValue(typeof(T), out var listeners)) return;
+                var listenersCopy = new List<Delegate>(listeners);
+
+                foreach (var listener in listenersCopy)
+                {
+                    ((Action<T>)listener)?.Invoke(eventData);
+                }
             }
+
+            // Creating a copy to avoid modification during iteration
         }
     }
 }
